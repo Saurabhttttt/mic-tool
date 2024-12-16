@@ -1,0 +1,325 @@
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title></title>
+<style type="text/css">/* CSS Styles */
+
+        body {
+
+            font-family: Arial, sans-serif;
+
+            margin: 20px;
+
+        }
+
+
+
+        textarea {
+
+            width: 100%;
+
+            height: 150px;
+
+            margin-bottom: 20px;
+
+            padding: 10px;
+
+            font-size: 14px;
+
+            border: 1px solid #ccc;
+
+            border-radius: 5px;
+
+        }
+
+
+
+        button {
+
+            padding: 10px 20px;
+
+            font-size: 16px;
+
+            cursor: pointer;
+
+            border: none;
+
+            background-color: #4CAF50;
+
+            color: white;
+
+            border-radius: 5px;
+
+        }
+
+
+
+        button:hover {
+
+            background-color: #45a049;
+
+        }
+
+
+
+        .output {
+
+            white-space: pre-wrap;
+
+            padding: 10px;
+
+            border: 1px solid #ccc;
+
+            margin-top: 20px;
+
+            background-color: #f9f9f9;
+
+            border-radius: 5px;
+
+        }
+
+
+
+        .difference {
+
+            background-color: yellow;
+
+            color: red;
+
+            font-weight: bold;
+
+        }
+
+
+
+        .microphone-button {
+
+            background-color: #007BFF;
+
+            color: white;
+
+            border-radius: 5px;
+
+            padding: 10px 20px;
+
+            font-size: 16px;
+
+            cursor: pointer;
+
+        }
+
+
+
+        .microphone-button:hover {
+
+            background-color: #0056b3;
+
+        }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script><!-- Include Mammoth.js for docx parsing --><script>
+
+        // JavaScript Functions
+
+
+
+        function normalize(text) {
+
+            return text.replace(/[,]+/g, '').toLowerCase();
+
+        }
+
+
+
+        function compareScripts() {
+
+            const script1 = document.getElementById('script1').value;
+
+            const script2 = document.getElementById('script2').value;
+
+            const words1 = script1.split(/\s+/);
+
+            const words2 = script2.split(/\s+/);
+
+            const normWords1 = words1.map(normalize);
+
+            const normWords2 = words2.map(normalize);
+
+
+
+            const highlighted1 = highlightDifferences(words1, normWords2);
+
+            const highlighted2 = highlightDifferences(words2, normWords1);
+
+
+
+            const output = `<p>Script 1: ${highlighted1}</p><p>Script 2: ${highlighted2}</p>`;
+
+            document.getElementById('output').innerHTML = output;
+
+        }
+
+
+
+        function highlightDifferences(originalWords, otherNormalizedWords) {
+
+            let otherWordCounts = {};
+
+            otherNormalizedWords.forEach(word => {
+
+                otherWordCounts[word] = (otherWordCounts[word] || 0) + 1;
+
+            });
+
+
+
+            return originalWords.map((word) => {
+
+                const normalizedWord = normalize(word);
+
+                if (otherWordCounts[normalizedWord]) {
+
+                    otherWordCounts[normalizedWord]--;
+
+                    return word;
+
+                } else {
+
+                    return `<span class="difference">${word}</span>`;
+
+                }
+
+            }).join(' ');
+
+        }
+
+
+
+        // Function to handle file upload
+
+        function handleFileUpload(event) {
+
+            const file = event.target.files[0];
+
+
+
+            if (file) {
+
+                const reader = new FileReader();
+
+                const extension = file.name.split('.').pop().toLowerCase();
+
+
+
+                reader.onload = function(e) {
+
+                    const content = e.target.result;
+
+
+
+                    if (extension === 'txt') {
+
+                        // Directly load the content for .txt files
+
+                        document.getElementById('script1').value = content;
+
+                    } else if (extension === 'docx') {
+
+                        // Use Mammoth.js to extract text from .docx files
+
+                        mammoth.extractRawText({ arrayBuffer: content })
+
+                            .then(function(result) {
+
+                                document.getElementById('script1').value = result.value;
+
+                            })
+
+                            .catch(function(err) {
+
+                                alert('Error reading .docx file: ' + err.message);
+
+                            });
+
+                    } else {
+
+                        alert('Unsupported file type. Please upload a .txt or .docx file.');
+
+                    }
+
+                };
+
+
+
+                if (extension === 'txt') {
+
+                    reader.readAsText(file); // Read text file content
+
+                } else if (extension === 'docx') {
+
+                    reader.readAsArrayBuffer(file); // Read .docx file as array buffer
+
+                }
+
+            }
+
+        }
+
+
+
+        // Voice-to-Text using Google Web Speech API
+
+        var recognition;
+
+
+
+        function startVoiceToText() {
+
+            if (!('webkitSpeechRecognition' in window)) {
+
+                alert("Your browser does not support voice recognition.");
+
+                return;
+
+            }
+
+
+
+            recognition = new webkitSpeechRecognition();
+
+            recognition.continuous = false; // Stop after first recognition
+
+            recognition.interimResults = true; // Display results while speaking
+
+            recognition.lang = 'en-US'; // Set the language
+
+
+
+            recognition.start();
+
+
+
+            recognition.onresult = function(event) {
+
+                const transcript = event.results[0][0].transcript;
+
+                document.getElementById('script2').value += transcript;
+
+            };
+
+
+
+            recognition.onerror = function(event) {
+
+                alert("Error occurred in speech recognition: " + event.error);
+
+            };
+
+        }
+
+    </script>
+<h1>Script Comparison Tool</h1>
+
+<p>Enter two scripts to compare. Differences will be highlighted word by word.</p>
+<!-- File Upload for Script 1 -->
+
+<p><input accept=".txt,.docx" id="fileUpload" onchange="handleFileUpload(event)" type="file" /> <!-- Textareas for user input --><textarea id="script1" placeholder="Enter Script 1"></textarea> <!-- Button for starting voice input for Script 2 --><button class="microphone-button" onclick="startVoiceToText()">🎙 Start Voice Input</button><textarea id="script2" placeholder="Enter Script 2"></textarea><button onclick="compareScripts()">Compare Scripts</button> <!-- Output for comparison results --></p>
+
+<div class="output" id="output"> </div>
